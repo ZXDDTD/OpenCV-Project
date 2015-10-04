@@ -8,11 +8,9 @@
 using namespace std;
 using namespace cv;
 
-/** Function Headers */
 void detectAndDisplay( Mat frame );
 
-/** Global variables */
-//-- Note, either copy these two files from opencv/data/haarscascades to your current folder, or change these locations
+//将分类器放到源文件夹
 String face_cascade_name = "haarcascade_frontalface_alt.xml";
 String eyes_cascade_name = "haarcascade_eye_tree_eyeglasses.xml";
 String nose_cascade_name = "haarcascade_mcs_nose.xml";
@@ -24,20 +22,17 @@ CascadeClassifier nose_cascade;
 string window_name = "Capture - Face detection";
 RNG rng(12345);
 
-/**
- * @function main
- */
 int main( void )
 {
   VideoCapture capture;
   Mat frame;
 
-  //-- 1. Load the cascades
+  //1. 载入已经训练好的分类器
   if( !face_cascade.load( face_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
   if( !eyes_cascade.load( eyes_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
   if( !nose_cascade.load( nose_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
 //  if( !nose_cascade.load( mouth_cascade_name ) ){ printf("--(!)Error loading\n"); return -1; };
-  //-- 2. Read the video stream
+  //2. 读录像
   capture.open( 0 );
   if( capture.isOpened() )
   {
@@ -45,11 +40,11 @@ int main( void )
     {
       capture >> frame;
 
-      //-- 3. Apply the classifier to the frame
+      //3. 如果录像不为空则调用函数检测
       if( !frame.empty() )
-       { detectAndDisplay( frame ); }
+      {detectAndDisplay( frame ); }
       else
-       { printf(" --(!) No captured frame -- Break!"); break; }
+      { printf(" --(!) No captured frame -- Break!"); break; }
 
       int c = waitKey(10);
       if( (char)c == 'c' ) { break; }
@@ -59,46 +54,43 @@ int main( void )
   return 0;
 }
 
-/**
- * @function detectAndDisplay
- */
+//人脸检测函数
 void detectAndDisplay( Mat frame )
 {
-   std::vector<Rect> faces;
+   std::vector<Rect> faces;   //创建矩形类型的faces容器用来存放检测到的人脸矩形
    Mat frame_gray;
 
-   cvtColor( frame, frame_gray, COLOR_BGR2GRAY );
-   equalizeHist( frame_gray, frame_gray );
-   //-- Detect faces
+   cvtColor( frame, frame_gray, COLOR_BGR2GRAY ); //转灰度图
+   equalizeHist( frame_gray, frame_gray );   //直方图均衡化
+   //分类器多尺度检测函数
    face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(30, 30) );
-
+   //对每张脸都创建中心点对象并画图
    for( size_t i = 0; i < faces.size(); i++ )
     {
       Point center( faces[i].x + faces[i].width/2, faces[i].y + faces[i].height/2 );
       ellipse( frame, center, Size( faces[i].width/2, faces[i].height/2), 0, 0, 360, Scalar( 255, 0, 255 ), 1, 8, 0 );
+      Mat faceROI = frame_gray( faces[i] );  
 
-      Mat faceROI = frame_gray( faces[i] );
-      std::vector<Rect> eyes;
-
-      //-- In each face, detect eyes
-      eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
-
+      //在每张脸中的寻找眼睛
+	  std::vector<Rect> eyes;
+      eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );   //眼睛的多尺度检测函数
       for( size_t j = 0; j < eyes.size(); j++ )
-       {
+      {
          Point eye_center( faces[i].x + eyes[j].x + eyes[j].width/2, faces[i].y + eyes[j].y + eyes[j].height/2 );
          int radius = cvRound( (eyes[j].width + eyes[j].height)*0.25 );
          circle( frame, eye_center, radius, Scalar( 255, 0, 0 ), 1, 8, 0 );
-       }
-	   // in the face, detec nose
-	  	std::vector<Rect> nose;
-		nose_cascade.detectMultiScale( faceROI, nose, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
-		for( size_t k = 0; k < nose.size(); k++)
-		{
-			Point nose_center( faces[i].x + nose[k].x + nose[k].width/2, faces[i].y + nose[k].y + nose[k].height/2 );
-			ellipse( frame, nose_center, Size( nose[k].width/2, nose[k].height/2), 0, 0, 360, Scalar( 100, 200, 100 ), 1, 8, 0 );
-		}
-		//// in the face, detec mouth
-	    // 	std::vector<Rect> mouth;
+      }
+
+	  //在每张脸中寻找鼻子
+	  std::vector<Rect> nose;
+	  nose_cascade.detectMultiScale( faceROI, nose, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+	  for( size_t k = 0; k < nose.size(); k++)
+	  {
+		 Point nose_center( faces[i].x + nose[k].x + nose[k].width/2, faces[i].y + nose[k].y + nose[k].height/2 );   //生成鼻子中心点类对象，并赋初值
+		 ellipse( frame, nose_center, Size( nose[k].width/2, nose[k].height/2), 0, 0, 360, Scalar( 200, 0, 100 ), 1, 8, 0 );//画椭圆
+	  }
+		//在每张脸中寻找嘴巴
+	    //std::vector<Rect> mouth;
 		//mouth_cascade.detectMultiScale( faceROI, mouth, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
 		//for( size_t l = 0; l < mouth.size(); l++)
 		//{
@@ -106,6 +98,6 @@ void detectAndDisplay( Mat frame )
 		//	ellipse( frame, mouth_center, Size( mouth[l].width/2, mouth[l].height/2), 0, 0, 360, Scalar( 255, 255, 255 ), 1, 8, 0 );
 		//}
     }
-   //-- Show what you got
-   imshow( window_name, frame );
+    //在窗口上展示
+    imshow( window_name, frame );
 }
